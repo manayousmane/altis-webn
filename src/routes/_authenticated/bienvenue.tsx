@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAltis } from "@/lib/altis/store";
+import { getGoogleAuthUrl } from "@/lib/altis/google.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +36,7 @@ export const Route = createFileRoute("/_authenticated/bienvenue")({
 function WelcomePage() {
   const navigate = useNavigate();
   const { organizationId, refresh } = useAltis();
+  const getAuthUrl = useServerFn(getGoogleAuthUrl);
   const [name, setName] = useState("");
   const [timezone, setTimezone] = useState("Europe/Paris");
   const [pending, setPending] = useState(false);
@@ -51,7 +54,7 @@ function WelcomePage() {
     }
     setPending(true);
     setError(null);
-    const { error: rpcError } = await supabase.rpc("create_organization", {
+    const { data: createdOrganizationId, error: rpcError } = await supabase.rpc("create_organization", {
       _name: name.trim(),
       _timezone: timezone,
     });
@@ -62,7 +65,17 @@ function WelcomePage() {
     }
     await refresh();
     toast.success("Organisation créée");
-    void navigate({ to: "/tableau-de-bord", replace: true });
+    try {
+      const { authUrl } = await getAuthUrl({
+        data: {
+          organizationId: createdOrganizationId,
+          redirectOrigin: window.location.origin,
+        },
+      });
+      window.location.assign(authUrl);
+    } catch {
+      void navigate({ to: "/tableau-de-bord", replace: true });
+    }
   };
 
   return (
