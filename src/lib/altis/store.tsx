@@ -313,6 +313,15 @@ export function AltisProvider({ children }: { children: ReactNode }) {
         const organization_id = requireOrg();
         const mod = data.modules.find((m) => m.id === input.moduleId);
         const program = data.programs.find((p) => p.id === mod?.programId);
+        const trainer = must(
+          await supabase
+            .from("members")
+            .select("id")
+            .eq("id", input.trainerId)
+            .eq("organization_id", organization_id)
+            .eq("kind", "FORMATEUR")
+            .maybeSingle(),
+        );
         const meetingUrl = input.meetingUrl?.trim() || null;
         const autoMeet =
           input.createMeetAutomatically !== undefined
@@ -329,7 +338,7 @@ export function AltisProvider({ children }: { children: ReactNode }) {
               session_date: input.date,
               start_time: input.startTime,
               end_time: input.endTime,
-              trainer_id: input.trainerId || null,
+              trainer_id: trainer.id,
               meeting_url: meetingUrl,
               meeting_code: meetingUrl ? (meetingUrl.split("/").pop() ?? null) : null,
               integration_error: meetingUrl
